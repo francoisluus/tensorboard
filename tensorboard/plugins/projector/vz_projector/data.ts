@@ -133,6 +133,7 @@ export class DataSet {
   tSNEShouldPause = false;
   tSNEShouldPerturb = false;
   tSNEShouldStop = true;
+  perturbFactor: number = 0.4;
   dim: [number, number] = [0, 0];
   hasTSNERun: boolean = false;
   spriteAndMetadataInfo: SpriteAndMetadataInfo;
@@ -327,7 +328,7 @@ export class DataSet {
         return;
       }
       if (!this.tSNEShouldPause) {
-        this.tsne.step(this.tSNEShouldPerturb ? 0.3 : 0.0);
+        this.tsne.step(this.tSNEShouldPerturb ? this.perturbFactor : 0.0);
         this.tSNEShouldPerturb = false;
         let result = this.tsne.getSolution();
         sampledIndices.forEach((index, i) => {
