@@ -95,6 +95,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   /** Polymer elements. */
   private runTsneButton: HTMLButtonElement;
   private pauseTsneButton: HTMLButtonElement;
+  private perturbTsneButton: HTMLButtonElement;
   private stopTsneButton: HTMLButtonElement;
   private perplexitySlider: HTMLInputElement;
   private learningRateInput: HTMLInputElement;
@@ -125,6 +126,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     this.zDropdown = this.querySelector('#z-dropdown') as HTMLElement;
     this.runTsneButton = this.querySelector('.run-tsne') as HTMLButtonElement;
     this.pauseTsneButton = this.querySelector('.pause-tsne') as HTMLButtonElement;
+    this.perturbTsneButton = this.querySelector('.perturb-tsne') as HTMLButtonElement;
     this.stopTsneButton = this.querySelector('.stop-tsne') as HTMLButtonElement;
     this.perplexitySlider =
         this.querySelector('#perplexity-slider') as HTMLInputElement;
@@ -179,6 +181,9 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
         this.dataSet.tSNEShouldPause = true;
         this.pauseTsneButton.innerText = 'Resume';
       }
+    });
+    this.perturbTsneButton.addEventListener('click', () => {
+      this.dataSet.tSNEShouldPerturb = !this.dataSet.tSNEShouldPerturb;
     });
     this.stopTsneButton.addEventListener(
         'click', () => this.dataSet.stopTSNE());
@@ -433,6 +438,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   private runTSNE() {
     this.runTsneButton.disabled = true;
     this.pauseTsneButton.disabled = false;
+    this.perturbTsneButton.disabled = false;
     this.stopTsneButton.disabled = null;
     this.dataSet.projectTSNE(
         this.perplexity, this.learningRate, this.tSNEis3d ? 3 : 2,
@@ -444,6 +450,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
             this.runTsneButton.disabled = null;
             this.pauseTsneButton.disabled = true;
             this.pauseTsneButton.innerText = 'Pause';
+            this.perturbTsneButton.disabled = true;
             this.stopTsneButton.disabled = true;
           }
         });
