@@ -95,6 +95,8 @@ const NUM_PCA_COMPONENTS = 10;
  */
 const SEQUENCE_METADATA_ATTRS = ['__next__', '__seq_next__'];
 
+export type DistanceSpace = (dataPoint: DataPoint) => Float32Array;
+
 function getSequenceNextPointIndex(pointMetadata: PointMetadata): number|null {
   let sequenceAttr = null;
   for (let metadataAttr of SEQUENCE_METADATA_ATTRS) {
@@ -421,11 +423,11 @@ export class DataSet {
    * Finds the nearest neighbors of the query point using a
    * user-specified distance metric.
    */
-  findNeighbors(pointIndex: number, distFunc: DistanceFunction, numNN: number):
-      knn.NearestEntry[] {
+  findNeighbors(pointIndex: number, distFunc: DistanceFunction, 
+    distSpace: DistanceSpace, numNN: number): knn.NearestEntry[] {
     // Find the nearest neighbors of a particular point.
     let neighbors = knn.findKNNofPoint(
-        this.points, pointIndex, numNN, (d => d.vector), distFunc);
+        this.points, pointIndex, numNN, distSpace, distFunc);
     // TODO(@dsmilkov): Figure out why we slice.
     let result = neighbors.slice(0, numNN);
     return result;

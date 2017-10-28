@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-import {DistanceFunction, SpriteAndMetadataInfo, State} from './data.js';
+import {DistanceFunction, DistanceSpace, DataPoint, SpriteAndMetadataInfo, State} from './data.js';
 import * as knn from './knn.js';
 import {ProjectorEventContext} from './projectorEventContext.js';
 import * as adapter from './projectorScatterPlotAdapter.js';
@@ -35,6 +35,7 @@ export let PolymerClass = PolymerElement({
 
 export class InspectorPanel extends PolymerClass {
   distFunc: DistanceFunction;
+  distSpace: DistanceSpace;
   numNN: number;
 
   private projectorEventContext: ProjectorEventContext;
@@ -248,6 +249,7 @@ export class InspectorPanel extends PolymerClass {
 
   private setupUI(projector: Projector) {
     this.distFunc = vector.cosDist;
+    this.distSpace = function (d: DataPoint):Float32Array{return d.vector;};
     const eucDist =
         this.querySelector('.distance a.euclidean') as HTMLLinkElement;
     eucDist.onclick = () => {
@@ -260,7 +262,7 @@ export class InspectorPanel extends PolymerClass {
       this.distFunc = vector.dist;
       this.projectorEventContext.notifyDistanceMetricChanged(this.distFunc);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
     };
 
@@ -275,8 +277,69 @@ export class InspectorPanel extends PolymerClass {
       this.distFunc = vector.cosDist;
       this.projectorEventContext.notifyDistanceMetricChanged(this.distFunc);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+    };
+
+    const originalSpace = this.querySelector('.distance-space a.original-space') as HTMLLinkElement;
+    originalSpace.onclick = () => {
+      const links = this.querySelectorAll('.distance-space a');
+      for (let i = 0; i < links.length; i++) {
+        util.classed(links[i] as HTMLElement, 'selected', false);
+      }
+      util.classed(originalSpace, 'selected', true);
+
+      this.distSpace = function (d: DataPoint):Float32Array{return d.vector;};
+      this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
+      const neighbors = projector.dataSet.findNeighbors(
+          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+      this.updateNeighborsList(neighbors);
+    };
+
+    const pcaSpace = this.querySelector('.distance-space a.pca-space') as HTMLLinkElement;
+    pcaSpace.onclick = () => {
+      const links = this.querySelectorAll('.distance-space a');
+      for (let i = 0; i < links.length; i++) {
+        util.classed(links[i] as HTMLElement, 'selected', false);
+      }
+      util.classed(pcaSpace, 'selected', true);
+
+      this.distSpace = function (d: DataPoint):Float32Array{
+        return new Float32Array(
+        ('pca-2' in d.projections)?
+        [d.projections['pca-0'], d.projections['pca-1'], d.projections['pca-2']]:
+        ('pca-1' in d.projections)?
+        [d.projections['pca-0'], d.projections['pca-1']]:
+        d.vector);
+      };
+      this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
+      const neighbors = projector.dataSet.findNeighbors(
+          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+      this.updateNeighborsList(neighbors);
+    };
+
+    const tsneSpace = this.querySelector('.distance-space a.tsne-space') as HTMLLinkElement;
+    tsneSpace.onclick = () => {
+      if (projector.dataSet.hasTSNERun) {
+        const links = this.querySelectorAll('.distance-space a');
+        for (let i = 0; i < links.length; i++) {
+          util.classed(links[i] as HTMLElement, 'selected', false);
+        }
+        util.classed(tsneSpace, 'selected', true);
+
+        this.distSpace = function (d: DataPoint):Float32Array{
+          return new Float32Array(
+          ('tsne-2' in d.projections)?
+          [d.projections['tsne-0'], d.projections['tsne-1'], d.projections['tsne-2']]:
+          ('tsne-1' in d.projections)?
+          [d.projections['tsne-0'], d.projections['tsne-1']]:
+          d.vector);
+        };
+        this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
+        const neighbors = projector.dataSet.findNeighbors(
+            this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+        this.updateNeighborsList(neighbors);
+      }
     };
 
     // Called whenever the search text input changes.
