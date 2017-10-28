@@ -25,7 +25,6 @@ import tensorboard.version
 
 
 REQUIRED_PACKAGES = [
-    'futures >= 3.1.1',
     'numpy >= 1.12.0',
     'six >= 1.10.0',
     'protobuf >= 3.3.0',
@@ -40,6 +39,10 @@ if sys.version_info.major == 3:
   REQUIRED_PACKAGES.append('wheel >= 0.26')
 else:
   REQUIRED_PACKAGES.append('wheel')
+
+# futures is a backport of python3's concurrent.futures module
+if sys.version_info.major < 3:
+  REQUIRED_PACKAGES.append('futures >= 3.1.1')
 
 CONSOLE_SCRIPTS = [
     'tensorboard = tensorboard.main:main',
@@ -76,7 +79,12 @@ setup(
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Topic :: Scientific/Engineering :: Mathematics',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Software Development :: Libraries',
