@@ -43,7 +43,7 @@ limitations under the License.
 
 .buttons {
   display: flex;
-  height: 60px;
+  height: 40px;
 }
 
 .button {
@@ -51,7 +51,7 @@ limitations under the License.
   border: none;
   border-radius: 7px;
   font-size: 13px;
-  padding: 10px;
+  padding: 2px;
   background: #e3e3e3;
 }
 
@@ -142,7 +142,7 @@ limitations under the License.
   text-decoration: none;
 }
 
-.options a.selected {
+.options a.selected, .options a.geodesic {
   color: #009EFE;
 }
 
@@ -150,8 +150,8 @@ limitations under the License.
   color: #F57C00;
 }
 
-.neighbors {
-  margin-bottom: 10px;
+.neighbors, .slider {
+  margin-bottom: 0px;
 }
 
 .neighbors-options, .distance, .distance-space {
@@ -231,14 +231,22 @@ limitations under the License.
       </div>
       <div class="distance">
         <span class="option-label">distance</span>
+        <paper-icon-button icon="help" class="help-icon"></paper-icon-button>
+        <paper-tooltip position="bottom" animation-delay="0" fit-to-visible-bounds>
+          Distance metric choice: Cosine or Euclidean; Distance type: Direct or Geodesic distance (over manifold).
+        </paper-tooltip>
         <div class="options">
           <a class="selected cosine" href="javascript:void(0);">COS</a>
           <a class="euclidean" href="javascript:void(0);">EUCLID</a>
-          <a class="geodesic" href="javascript:void(0);">GEODESIC</a>
+          <a class="geodesic" href="javascript:void(0);">DIRECT</a>
         </div>
       </div>
       <div class="distance-space">
         <span class="option-label">dist. space</span>
+        <paper-icon-button icon="help" class="help-icon"></paper-icon-button>
+        <paper-tooltip position="bottom" animation-delay="0" fit-to-visible-bounds>
+          The space/projection in which the distance is calculated.
+        </paper-tooltip>
         <div class="options">
           <a class="selected original-space" href="javascript:void(0);">ORIGINAL</a>
           <a class="pca-space" href="javascript:void(0);">PCA</a>

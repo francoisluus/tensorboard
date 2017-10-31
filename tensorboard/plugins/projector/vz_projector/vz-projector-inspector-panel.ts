@@ -173,7 +173,8 @@ export class InspectorPanel extends PolymerClass {
     }
 
     this.searchBox.message = '';
-    const minDist = neighbors.length > 0 ? neighbors[0].dist : 0;
+    const minDist = neighbors.length > 0 ?
+        Math.min.apply(Math, neighbors.map(n => n.dist)) : 0;
 
     for (let i = 0; i < neighbors.length; i++) {
       const neighbor = neighbors[i];
@@ -266,6 +267,7 @@ export class InspectorPanel extends PolymerClass {
       const neighbors = projector.dataSet.findNeighbors(
           this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+      this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
     };
 
     const cosDist = this.querySelector('.distance a.cosine') as HTMLLinkElement;
@@ -281,22 +283,26 @@ export class InspectorPanel extends PolymerClass {
       const neighbors = projector.dataSet.findNeighbors(
           this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+      this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
     };
 
     const geoDist = this.querySelector('.distance a.geodesic') as HTMLLinkElement;
     geoDist.onclick = () => {
       if (this.distGeo) {
         this.distGeo = false;
+        geoDist.innerText = 'DIRECT';
         util.classed(geoDist, 'selected-geo', false);
       }
       else {
         this.distGeo = true;
+        geoDist.innerText = 'GEODESIC';
         util.classed(geoDist, 'selected-geo', true);
       }
 
       const neighbors = projector.dataSet.findNeighbors(
           this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+      this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
     };
 
     const originalSpace = this.querySelector('.distance-space a.original-space') as HTMLLinkElement;
@@ -312,6 +318,7 @@ export class InspectorPanel extends PolymerClass {
       const neighbors = projector.dataSet.findNeighbors(
           this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+      this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
     };
 
     const pcaSpace = this.querySelector('.distance-space a.pca-space') as HTMLLinkElement;
@@ -334,6 +341,7 @@ export class InspectorPanel extends PolymerClass {
       const neighbors = projector.dataSet.findNeighbors(
           this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
+      this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
     };
 
     const tsneSpace = this.querySelector('.distance-space a.tsne-space') as HTMLLinkElement;
@@ -357,6 +365,7 @@ export class InspectorPanel extends PolymerClass {
         const neighbors = projector.dataSet.findNeighbors(
             this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
         this.updateNeighborsList(neighbors);
+        this.projectorEventContext.notifySelectionChanged(this.selectedPointIndices);
       }
     };
 
