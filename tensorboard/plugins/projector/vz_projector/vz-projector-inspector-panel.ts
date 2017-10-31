@@ -36,6 +36,7 @@ export let PolymerClass = PolymerElement({
 export class InspectorPanel extends PolymerClass {
   distFunc: DistanceFunction;
   distSpace: DistanceSpace;
+  distGeo: boolean;
   numNN: number;
 
   private projectorEventContext: ProjectorEventContext;
@@ -249,6 +250,7 @@ export class InspectorPanel extends PolymerClass {
 
   private setupUI(projector: Projector) {
     this.distFunc = vector.cosDist;
+    this.distGeo = false;
     this.distSpace = function (d: DataPoint):Float32Array{return d.vector;};
     const eucDist =
         this.querySelector('.distance a.euclidean') as HTMLLinkElement;
@@ -262,7 +264,7 @@ export class InspectorPanel extends PolymerClass {
       this.distFunc = vector.dist;
       this.projectorEventContext.notifyDistanceMetricChanged(this.distFunc);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
     };
 
@@ -277,7 +279,23 @@ export class InspectorPanel extends PolymerClass {
       this.distFunc = vector.cosDist;
       this.projectorEventContext.notifyDistanceMetricChanged(this.distFunc);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
+      this.updateNeighborsList(neighbors);
+    };
+
+    const geoDist = this.querySelector('.distance a.geodesic') as HTMLLinkElement;
+    geoDist.onclick = () => {
+      if (this.distGeo) {
+        this.distGeo = false;
+        util.classed(geoDist, 'selected-geo', false);
+      }
+      else {
+        this.distGeo = true;
+        util.classed(geoDist, 'selected-geo', true);
+      }
+
+      const neighbors = projector.dataSet.findNeighbors(
+          this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
     };
 
@@ -292,7 +310,7 @@ export class InspectorPanel extends PolymerClass {
       this.distSpace = function (d: DataPoint):Float32Array{return d.vector;};
       this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
     };
 
@@ -314,7 +332,7 @@ export class InspectorPanel extends PolymerClass {
       };
       this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
       const neighbors = projector.dataSet.findNeighbors(
-          this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+          this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
       this.updateNeighborsList(neighbors);
     };
 
@@ -337,7 +355,7 @@ export class InspectorPanel extends PolymerClass {
         };
         this.projectorEventContext.notifyDistanceSpaceChanged(this.distSpace);
         const neighbors = projector.dataSet.findNeighbors(
-            this.selectedPointIndices[0], this.distFunc, this.distSpace, this.numNN);
+            this.selectedPointIndices[0], this.distFunc, this.distGeo, this.distSpace, this.numNN);
         this.updateNeighborsList(neighbors);
       }
     };
