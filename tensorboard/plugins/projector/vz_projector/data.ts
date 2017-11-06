@@ -344,11 +344,8 @@ export class DataSet {
         });
         this.tSNEIteration++;
         stepCallback(this.tSNEIteration);
-        requestAnimationFrame(step);
       }
-      else {
-        setTimeout(function (){requestAnimationFrame(step); }, 100);
-      }
+      requestAnimationFrame(step);
     };
 
     // Nearest neighbors calculations.

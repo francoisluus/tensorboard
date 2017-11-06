@@ -260,13 +260,13 @@ export class Projector extends ProjectorPolymer implements
             let p_vector = this.inspectorPanel.distSpace(this.dataSet.points[p]);
             let n_dist = this.inspectorPanel.distFunc(main_point_vector, p_vector);
             let pos = 0;  // insertion position into dist ordered neighbors
+            
             while (pos < neighbors.length && neighbors[pos].dist < n_dist)  // find pos
               pos = pos + 1;  // move up the sorted neighbors list according to dist
             neighbors.splice(pos, 0, {index: p, dist: n_dist});  // add new neighbor
           }
         });
-      }
-      else {  // multiple selections
+      } else {  // multiple selections
         let updatedSelectedPointIndices = this.selectedPointIndices.filter(n =>
             newSelectedPointIndices.filter(p => p == n).length == 0);  // deselect
         newSelectedPointIndices.forEach(p => {  // add additional selections
@@ -282,8 +282,7 @@ export class Projector extends ProjectorPolymer implements
           this.metadataCard.updateMetadata(null);  // clear metadata
         }
       }
-    }
-    else {  // normal selection mode
+    } else {  // normal selection mode
       this.selectedPointIndices = newSelectedPointIndices;
 
       if (newSelectedPointIndices.length === 1) {
