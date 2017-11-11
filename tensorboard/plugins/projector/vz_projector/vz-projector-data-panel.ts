@@ -77,7 +77,7 @@ export class DataPanel extends DataPanelPolymer {
     this.dataProvider = dp;
     this.setupUploadButtons();
     this.labelingBox = this.querySelector('#labeling-box') as ProjectorInput;
-    this.labelingBox.toggleRegexVisibility();
+    this.labelingBox.setRegexVisibility(false);
     this.applyLabel = this.querySelector('#apply-label') as HTMLButtonElement;
     this.applyLabel.disabled = true;
 

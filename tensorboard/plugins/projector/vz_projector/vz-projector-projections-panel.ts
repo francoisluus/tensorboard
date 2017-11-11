@@ -43,6 +43,10 @@ export let ProjectionsPanelPolymer = PolymerElement({
       type: String,
       observer: '_customSelectedSearchByMetadataOptionChanged'
     },
+    superviseClass: {
+      type: String,
+      observer: '_superviseClassOptionChanged'
+    }
   }
 });
 
@@ -99,8 +103,13 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
   private perplexitySlider: HTMLInputElement;
   private learningRateInput: HTMLInputElement;
   private perturbFactorInput: HTMLInputElement;
+  private superviseFactorInput: HTMLInputElement;
   private zDropdown: HTMLElement;
   private iterationLabel: HTMLElement;
+
+  private searchBox: ProjectorInput;
+  private superviseClass: string;
+  private metadataFields: string[];
 
   private customProjectionXLeftInput: ProjectorInput;
   private customProjectionXRightInput: ProjectorInput;
@@ -133,7 +142,11 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
         this.querySelector('#learning-rate-slider') as HTMLInputElement;
     this.perturbFactorInput =
         this.querySelector('#perturb-factor-slider') as HTMLInputElement;
+    this.superviseFactorInput =
+        this.querySelector('#supervise-factor-slider') as HTMLInputElement;
     this.iterationLabel = this.querySelector('.run-tsne-iter') as HTMLElement;
+    this.searchBox = this.querySelector('#search-box') as ProjectorInput;
+    this.searchBox.setRegexVisibility(false);
   }
 
   disablePolymerChangesTriggerReprojection() {
@@ -166,6 +179,18 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     }
     (this.querySelector('.tsne-perturb-factor span') as HTMLSpanElement)
       .innerText = '' + this.perturbFactorInput.value;
+  }
+
+  private updateTSNESuperviseFactorFromUIChange() {
+    if (this.superviseFactorInput && this.dataSet) {
+      if (+this.superviseFactorInput.value == 0)
+        this.dataSet.superviseFactor = 0;
+      else
+        this.dataSet.superviseFactor = Math.exp(Math.log(0.001) * 
+            (1. - +this.superviseFactorInput.value / 1000.));
+      (this.querySelector('.tsne-supervise-factor span') as HTMLSpanElement)
+      .innerText = ('' + this.dataSet.superviseFactor.toFixed(3)).slice(1, 5);
+    }
   }
 
   private setupUIControls() {
@@ -209,6 +234,38 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     this.perturbFactorInput.addEventListener(
         'change', () => this.updateTSNEPerturbFactorFromUIChange());
     this.updateTSNEPerturbFactorFromUIChange();
+
+    this.superviseFactorInput.addEventListener(
+        'change', () => this.updateTSNESuperviseFactorFromUIChange());
+    this.updateTSNESuperviseFactorFromUIChange();
+
+    // Called whenever the search text input changes.
+    const updateInput = (value: string, inRegexMode: boolean) => {
+      if (this.superviseFactorInput) {
+        this.superviseFactorInput.value = "0";
+        this.updateTSNESuperviseFactorFromUIChange();
+      }
+
+      if (value == null || value.trim() === '') {
+        this.searchBox.message = '';
+        this.dataSet.unlabeledClass = null;
+        return;
+      }
+      const indices = this.dataSet.query(
+          value, inRegexMode, this.superviseClass);
+      
+      if (indices.length === 0) {
+        this.searchBox.message = '0 matches.';
+        this.dataSet.unlabeledClass = null;
+      } else {
+        this.searchBox.message = `${indices.length} matches.`;
+        this.dataSet.unlabeledClass = value;
+      }
+    };
+
+    this.searchBox.registerInputChangedListener((value, inRegexMode) => {
+      updateInput(value, inRegexMode);
+    });
 
     this.setupCustomProjectionInputFields();
     // TODO: figure out why `--paper-input-container-input` css mixin didn't
@@ -265,6 +322,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     this.updateTSNEPerplexityFromSliderChange();
     this.updateTSNELearningRateFromUIChange();
     this.updateTSNEPerturbFactorFromUIChange();
+    this.updateTSNESuperviseFactorFromUIChange();
     if (this.iterationLabel) {
       this.iterationLabel.innerText = bookmark.tSNEIteration.toString();
     }
@@ -373,6 +431,20 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     });
     this.customSelectedSearchByMetadataOption =
         this.searchByMetadataOptions[Math.max(0, searchByMetadataIndex)];
+
+    let labelIndex = -1;
+    this.metadataFields = spriteAndMetadata.stats.map((stats, i) => {
+      if (!stats.isNumeric && labelIndex === -1) {
+        labelIndex = i;
+      }
+      return stats.name;
+    });
+    
+    if (this.superviseClass == null || this.metadataFields.filter(name =>
+        name == this.superviseClass).length == 0) {
+      // Make the default label the first non-numeric column.
+      this.superviseClass = this.metadataFields[Math.max(0, labelIndex)];
+    }
   }
 
   public showTab(id: ProjectionType) {
@@ -457,10 +529,11 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
         this.perplexity, this.learningRate, this.tSNEis3d ? 3 : 2,
         (iteration: number) => {
           if (iteration != null) {
+            this.runTsneButton.disabled = false;
             this.iterationLabel.innerText = '' + iteration;
             this.projector.notifyProjectionPositionsUpdated();
           } else {
-            this.runTsneButton.disabled = null;
+            this.runTsneButton.disabled = false;
             this.pauseTsneButton.disabled = true;
             this.pauseTsneButton.innerText = 'Pause';
             this.perturbTsneButton.disabled = true;
@@ -541,6 +614,12 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
     if (this.currentProjection === 'custom') {
       this.computeAllCentroids();
       this.reprojectCustom();
+    }
+  }
+
+  _superviseClassOptionChanged(newVal: string, oldVal: string) {
+    if (this.dataSet) {
+      this.dataSet.superviseClass = newVal;
     }
   }
 

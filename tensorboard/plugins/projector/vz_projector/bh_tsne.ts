@@ -45,7 +45,7 @@ limitations under the License.
 
 import {SPNode, SPTree} from './sptree.js';
 
-type AugmSPNode = SPNode&{numCells: number, yCell: number[], rCell: number};
+type AugmSPNode = SPNode&{numCells: number, yCell: number[], rCell: number, wCell: number};
 
 /**
  * Barnes-hut approximation level. Higher means more approximation and faster
@@ -315,11 +315,13 @@ export class TSNE {
   getSolution() { return this.Y; }
 
   // perform a single step of optimization to improve the embedding
-  step(perturb: number) {
+  step(perturb: number, superviseFactor: number, unlabeledClass: string,
+      labelSize: {[key: string]: number}, labels: string[]) {
     this.iter += 1;
     let N = this.N;
 
-    let grad = this.costGrad(this.Y);  // evaluate gradient
+    let grad = this.costGrad(this.Y, superviseFactor, unlabeledClass,
+        labelSize, labels);  // evaluate gradient
 
     // perform gradient step
     let ymean = this.dim === 3 ? [0, 0, 0] : [0, 0];
@@ -359,9 +361,13 @@ export class TSNE {
   }
 
   // return cost and gradient, given an arrangement
-  costGrad(Y: Float64Array): number[][] {
+  costGrad(Y: Float64Array, superviseFactor: number, unlabeledClass: string,
+      labelCounts: {[key: string]: number}, labels: string[]): number[][] {
     let N = this.N;
     let P = this.P;
+    let weights = Array(N).fill(1.);
+    let supervise = superviseFactor > 0 && labels != null && labelCounts != null;
+    let unlabeledCount = unlabeledClass? labelCounts[unlabeledClass] : 0;
 
     // Trick that helps with local optima.
     let alpha = this.iter < 100 ? 4 : 1;
@@ -378,21 +384,24 @@ export class TSNE {
     }
 
     // Make a tree.
-    let tree = new SPTree(points);
+    let tree = new SPTree(points, weights);
     let root = tree.root as AugmSPNode;
     // Annotate the tree.
 
     let annotateTree =
-        (node: AugmSPNode): {numCells: number, yCell: number[]} => {
+        (node: AugmSPNode): {numCells: number, yCell: number[], wCell: number} => {
           let numCells = 1;
           if (node.children == null) {
             // Update the current node and tell the parent.
             node.numCells = numCells;
             node.yCell = node.point;
-            return {numCells, yCell: node.yCell};
+            node.wCell = node.weight;
+            return {numCells, yCell: node.yCell.map(v => v * node.wCell), wCell: node.wCell};
           }
           // node.point is a 2 or 3-dim number[], so slice() makes a copy.
           let yCell = node.point.slice();
+          yCell = yCell.map(v => v * node.weight);
+          let wCell = node.weight;  // weight of cells
           for (let i = 0; i < node.children.length; ++i) {
             let child = node.children[i];
             if (child == null) {
@@ -400,14 +409,16 @@ export class TSNE {
             }
             let result = annotateTree(child as AugmSPNode);
             numCells += result.numCells;
+            wCell += result.wCell;
             for (let d = 0; d < this.dim; ++d) {
               yCell[d] += result.yCell[d];
             }
           }
           // Update the node and tell the parent.
           node.numCells = numCells;
-          node.yCell = yCell.map(v => v / numCells);
-          return {numCells, yCell};
+          node.wCell = wCell;
+          node.yCell = yCell.map(v => v / wCell);
+          return {numCells, yCell, wCell};
         };
 
     // Augment the tree with more info.
@@ -418,16 +429,31 @@ export class TSNE {
     });
     // compute current Q distribution, unnormalized first
     let grad: number[][] = [];
+    let sum_pij = 0;
     let Z = 0;
     let forces: [number[], number[]][] = new Array(N);
     for (let i = 0; i < N; ++i) {
       let pointI = points[i];
+      let sameCount = labelCounts[labels[i]];
+      let otherCount = N - sameCount - unlabeledCount;
       // Compute the positive forces for the i-th node.
       let Fpos = this.dim === 3 ? [0, 0, 0] : [0, 0];
       let neighbors = this.nearest[i];
       for (let k = 0; k < neighbors.length; ++k) {
         let j = neighbors[k].index;
-        let pij = P[i * N + j];
+        let pij = P[i * N + j] * weights[j];
+        if (supervise) {
+          if (labels[i] == unlabeledClass || labels[j] == unlabeledClass) {
+            pij *= 1. / N;
+          }
+          else if (labels[i] != labels[j]) {
+            pij *= Math.max(1. / N - superviseFactor / otherCount, 1E-7);
+          }
+          else {
+            pij *= Math.min(1. / N + superviseFactor / sameCount, 1-1E-7);
+          }
+        }
+        sum_pij += pij;
         let pointJ = points[j];
         let squaredDistItoJ = this.dist2(pointI, pointJ);
         let premult = pij / (1 + squaredDistItoJ);
@@ -442,7 +468,10 @@ export class TSNE {
             (squaredDistToCell > 0 &&
              node.rCell / Math.sqrt(squaredDistToCell) < THETA)) {
           let qijZ = 1 / (1 + squaredDistToCell);
-          let dZ = node.numCells * qijZ;
+          let dZ = node.wCell * qijZ;
+          if (supervise) {
+            dZ *= 1. / N;
+          }
           Z += dZ;
           dZ *= qijZ;
           this.computeForce(FnegZ, dZ, pointI, node.yCell);
@@ -451,6 +480,18 @@ export class TSNE {
         // Cell is too close to approximate.
         let squaredDistToPoint = this.dist2(pointI, node.point);
         let qijZ = 1 / (1 + squaredDistToPoint);
+        qijZ *= node.weight;
+        if (supervise) {
+          if (labels[i] == unlabeledClass || labels[node.index] == unlabeledClass) {
+            qijZ *= 1. / N;
+          }
+          else if (labels[i] != labels[node.index]) {
+            qijZ *= Math.min(1. / N + superviseFactor / otherCount, 1-1E-7);
+          }
+          else {
+            qijZ *= Math.max(1. / N - superviseFactor / sameCount, 1E-7);
+          }
+        }
         Z += qijZ;
         qijZ *= qijZ;
         this.computeForce(FnegZ, qijZ, pointI, node.point);
@@ -459,7 +500,7 @@ export class TSNE {
       forces[i] = [Fpos, FnegZ];
     }
     // Normalize the negative forces and compute the gradient.
-    const A = 4 * alpha;
+    const A = 4 * alpha / sum_pij;
     const B = 4 / Z;
     for (let i = 0; i < N; ++i) {
       let [FPos, FNegZ] = forces[i];

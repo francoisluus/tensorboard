@@ -136,6 +136,9 @@ export class DataSet {
   tSNEShouldPerturb = false;
   tSNEShouldStop = true;
   perturbFactor: number = 0.4;
+  superviseFactor: number = 0.0;
+  unlabeledClass: string = null;
+  superviseClass: string = null;
   dim: [number, number] = [0, 0];
   hasTSNERun: boolean = false;
   spriteAndMetadataInfo: SpriteAndMetadataInfo;
@@ -322,7 +325,8 @@ export class DataSet {
     this.tSNEShouldStop = false;
     this.tSNEIteration = 0;
 
-    let sampledIndices = this.shuffledDataIndices.slice(0, TSNE_SAMPLE_SIZE);
+    let sampledIndices = Array.from(Array(TSNE_SAMPLE_SIZE > this.points.length ?
+        this.points.length : TSNE_SAMPLE_SIZE).keys());
     let step = () => {
       if (this.tSNEShouldStop) {
         stepCallback(null);
@@ -330,7 +334,13 @@ export class DataSet {
         return;
       }
       if (!this.tSNEShouldPause) {
-        this.tsne.step(this.tSNEShouldPerturb ? this.perturbFactor : 0.0);
+        let labelCounts = {};
+        this.spriteAndMetadataInfo.stats
+            .find(s => s.name == this.superviseClass).uniqueEntries
+            .forEach(e => labelCounts[e.label] = e.count);
+        this.tsne.step(this.tSNEShouldPerturb ? this.perturbFactor : 0.0,
+            this.superviseFactor, this.unlabeledClass, labelCounts,
+            this.points.map(p => p.metadata[this.superviseClass].toString()));
         this.tSNEShouldPerturb = false;
         let result = this.tsne.getSolution();
         sampledIndices.forEach((index, i) => {
