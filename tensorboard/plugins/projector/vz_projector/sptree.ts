@@ -29,6 +29,8 @@ export interface SPNode {
   box: BBox;
   /** One or more points this node has. */
   point: Point;
+  /** Index of point where the node only has one point. */
+  pointIndex: number;
 }
 
 /**
@@ -85,9 +87,9 @@ export class SPTree {
       center[d] = min[d] + span / 2;
       halfDim = Math.max(halfDim, span / 2);
     }
-    this.root = {box: {center: center, halfDim: halfDim}, point: data[0]};
+    this.root = {box: {center: center, halfDim: halfDim}, point: data[0], pointIndex: 0};
     for (let i = 1; i < data.length; ++i) {
-      this.insert(this.root, data[i]);
+      this.insert(this.root, data[i], i);
     }
   }
 
@@ -133,7 +135,7 @@ export class SPTree {
     }
   }
 
-  private insert(node: SPNode, p: Point) {
+  private insert(node: SPNode, p: Point, pointIndex: number) {
     // Subdivide and then add the point to whichever node will accept it.
     if (node.children == null) {
       node.children = new Array(this.masks.length);
@@ -151,20 +153,20 @@ export class SPTree {
       }
     }
     if (node.children[index] == null) {
-      this.makeChild(node, index, p);
+      this.makeChild(node, index, p, pointIndex);
     } else {
-      this.insert(node.children[index], p);
+      this.insert(node.children[index], p, pointIndex);
     }
   }
 
-  private makeChild(node: SPNode, index: number, p: Point): void {
+  private makeChild(node: SPNode, index: number, p: Point, pointIndex: number): void {
     let oldC = node.box.center;
     let h = node.box.halfDim / 2;
     let newC: Point = new Array(this.dim);
     for (let d = 0; d < this.dim; ++d) {
       newC[d] = (index & (1 << d)) ? oldC[d] + h : oldC[d] - h;
     }
-    node.children[index] = {box: {center: newC, halfDim: h}, point: p};
+    node.children[index] = {box: {center: newC, halfDim: h}, point: p, pointIndex: pointIndex};
   }
 }
 

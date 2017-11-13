@@ -482,8 +482,23 @@ export class TSNE {
         // Cell is too close to approximate.
         let squaredDistToPoint = this.dist2(pointI, node.point);
         let qijZ = 1 / (1 + squaredDistToPoint);
-        Z += qijZ;
-        qijZ *= qijZ;
+
+        if (supervise) {
+          let j = node.pointIndex;
+          let Mij = 1.;
+
+          if (!(labels[i] == unlabeledClass || labels[j] == unlabeledClass)
+              && labels[i] == labels[j]) {
+            Mij = 1. - superviseFactor;
+          }
+          Z += Mij * qijZ;
+          qijZ *= Mij * qijZ;
+        }
+        else {
+          Z += qijZ;
+          qijZ *= qijZ;
+        }
+        
         this.computeForce(FnegZ, qijZ, pointI, node.point);
         return false;
       }, true);
