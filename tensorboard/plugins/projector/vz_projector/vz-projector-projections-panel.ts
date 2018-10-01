@@ -364,7 +364,7 @@ export class ProjectionsPanel extends ProjectionsPanelPolymer {
                                      dataSet.dim[1] > PCA_SAMPLE_DIM);
     (this.querySelector('#pca-sampling') as HTMLElement).style.display =
         wasSampled ? null : 'none';
-    this.showTab('pca');
+    this.showTab('tsne');
   }
 
   _pcaDimensionToggleObserver() {
