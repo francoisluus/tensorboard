@@ -454,6 +454,7 @@ export class TSNE {
         labels != null && labelCounts != null;
     let unlabeledCount = supervised && unlabeledClass != null &&
         unlabeledClass !== '' ? labelCounts[unlabeledClass] : 0;
+    let numeric = true;  // hard code
 
     // Make data for the SP tree.
     let points: number[][] = new Array(N);  // (x, y)[]
@@ -524,14 +525,22 @@ export class TSNE {
         let pij = P[i * N + j];
         // apply semi-supervised prior probabilities
         if (supervised) {
-          if (labels[i] === unlabeledClass || labels[j] === unlabeledClass) {
-            pij *= 1. / N;
+          if (!numeric) {
+            if (labels[i] === unlabeledClass || labels[j] === unlabeledClass) {
+              pij *= 1. / N;
+            }
+            else if (labels[i] !== labels[j]) {
+              pij *= Math.max(1. / N - superviseFactor / otherCount, 1E-7);
+            }
+            else if (labels[i] === labels[j]) {
+              pij *= Math.min(1. / N + superviseFactor / sameCount, 1. - 1E-7);
+            }
           }
-          else if (labels[i] !== labels[j]) {
-            pij *= Math.max(1. / N - superviseFactor / otherCount, 1E-7);
-          }
-          else if (labels[i] === labels[j]) {
-            pij *= Math.min(1. / N + superviseFactor / sameCount, 1. - 1E-7);
+          else {
+            let label_i = parseFloat(labels[i])
+            let label_j = parseFloat(labels[j])
+
+            pij *= Math.exp(-Math.pow(label_i-label_j, 2.0)/2.0);
           }
           sum_pij += pij;
         }
